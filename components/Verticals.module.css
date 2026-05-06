@@ -1,0 +1,125 @@
+.section {
+  background: var(--cream);
+  padding: 80px 48px 100px;
+  border-top: 1px solid var(--ink-30);
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-30);
+  margin-bottom: 48px;
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+.pills {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-radius: 9999px;
+  border: 1px solid var(--ink-30);
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  font-family: inherit;
+}
+
+.pill.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.pill:not(.active):hover {
+  border-color: rgba(13, 13, 13, 0.5);
+  background: rgba(13, 13, 13, 0.04);
+}
+
+.pillName {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.pillArrow {
+  font-size: 13px;
+  opacity: 0.5;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.pill.active .pillArrow {
+  opacity: 1;
+  transform: rotate(45deg);
+}
+
+.card {
+  background: var(--vermillion);
+  border-radius: var(--r-card);
+  padding: 36px 32px;
+  color: #fff;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cardTag {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.cardTitle {
+  font-family: 'Big Shoulders Display', sans-serif;
+  font-weight: 900;
+  font-size: 40px;
+  text-transform: uppercase;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+}
+
+.cardDesc {
+  font-size: 14px;
+  line-height: 1.65;
+  opacity: 0.85;
+  flex: 1;
+}
+
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.tag {
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+@media (max-width: 900px) {
+  .section { padding: 60px 24px 80px; }
+  .inner { grid-template-columns: 1fr; }
+}
