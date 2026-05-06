@@ -1,45 +1,39 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import styles from "./Nav.module.css";
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    let ticking = false;
-    const handler = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          const y = window.scrollY;
-          setScrolled((prev) => {
-            if (!prev && y > 80) return true;
-            if (prev && y < 40) return false;
-            return prev;
-          });
-          ticking = false;
-        });
-        ticking = true;
-      }
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled((prev) => {
+        if (!prev && y > 80) return true;
+        if (prev && y < 40) return false;
+        return prev;
+      });
     };
-    window.addEventListener("scroll", handler, { passive: true });
-    return () => window.removeEventListener("scroll", handler);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <nav className={`${styles.nav} ${scrolled ? styles.scrolled : ""}`}>
-      <a className={styles.logo} href="#">
-        AVEOS <span>•</span> LABS
-      </a>
-      <ul className={styles.links}>
-        <li><a href="#stats">Work</a></li>
-        <li><a href="#verticals">Services</a></li>
-        <li><a href="#products">Products</a></li>
-        <li><a href="#cta">Studio</a></li>
-      </ul>
-      <a className={styles.cta} href="mailto:hello@aveoslabs.com">
-        Book a Call →
-      </a>
+    <nav className={`nav${scrolled ? " scrolled" : ""}`} id="nav">
+      <div className="nav-shell">
+        <a href="#" className="wordmark" aria-label="Aveos Labs">
+          Aveos<span className="dot" />Labs
+        </a>
+        <div className="nav-links">
+          <a href="#work">Work</a>
+          <a href="#services">Services</a>
+          <a href="#products">Products</a>
+          <a href="#studio">Studio</a>
+        </div>
+        <a href="#book" className="pill">
+          Book a Call <span className="arrow">→</span>
+        </a>
+      </div>
     </nav>
   );
 }

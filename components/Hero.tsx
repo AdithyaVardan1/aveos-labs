@@ -1,154 +1,168 @@
 "use client";
-
-import { useEffect, useRef } from "react";
-import styles from "./Hero.module.css";
+import { useEffect, useRef, useState } from "react";
 
 export default function Hero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mouseRef = useRef({ x: -9999, y: -9999 });
   const rafRef = useRef<number>(0);
+  const mouseRef = useRef({ x: -9999, y: -9999, active: false });
+  const [headlineIn, setHeadlineIn] = useState(false);
+  const [fadesIn, setFadesIn] = useState(false);
 
+  // Staggered reveal
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      setHeadlineIn(true);
+      setTimeout(() => setFadesIn(true), 80);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Particle field
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    const COUNT = 380;
-    const REPULSE_R = 120;
-    const CONNECT_R = 90;
-    const COLOR = "#E63922";
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let w = 0, h = 0;
 
-    let W = 0, H = 0;
-    type Particle = { x: number; y: number; vx: number; vy: number; r: number };
-    let particles: Particle[] = [];
+    type P = { x: number; y: number; ox: number; oy: number; vx: number; vy: number; r: number; a: number };
+    let particles: P[] = [];
 
     function resize() {
-      W = canvas!.width = canvas!.offsetWidth;
-      H = canvas!.height = canvas!.offsetHeight;
+      const rect = canvas!.getBoundingClientRect();
+      w = rect.width; h = rect.height;
+      canvas!.width = w * dpr; canvas!.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      seed();
     }
 
-    function mkParticle(): Particle {
-      return {
-        x: Math.random() * W,
-        y: Math.random() * H,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
-        r: Math.random() * 1.6 + 0.6,
-      };
-    }
-
-    function init() {
-      resize();
-      particles = Array.from({ length: COUNT }, mkParticle);
-    }
-
-    function tick() {
-      ctx.clearRect(0, 0, W, H);
-      const mx = mouseRef.current.x;
-      const my = mouseRef.current.y;
-
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        const dx = p.x - mx, dy = p.y - my;
-        const d = Math.sqrt(dx * dx + dy * dy);
-
-        if (d < REPULSE_R) {
-          const force = ((REPULSE_R - d) / REPULSE_R) * 0.04;
-          p.vx += (dx / d) * force;
-          p.vy += (dy / d) * force;
-        }
-
-        p.vx *= 0.985; p.vy *= 0.985;
-        p.x += p.vx; p.y += p.vy;
-
-        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
-        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = COLOR;
-        ctx.globalAlpha = 0.55;
-        ctx.fill();
-
-        if (d < CONNECT_R * 1.8) {
-          for (let j = i + 1; j < particles.length; j++) {
-            const q = particles[j];
-            const ex = p.x - q.x, ey = p.y - q.y;
-            const ed = Math.sqrt(ex * ex + ey * ey);
-            if (ed < CONNECT_R) {
-              ctx.beginPath();
-              ctx.moveTo(p.x, p.y);
-              ctx.lineTo(q.x, q.y);
-              ctx.strokeStyle = COLOR;
-              ctx.globalAlpha = (1 - ed / CONNECT_R) * 0.25;
-              ctx.lineWidth = 0.6;
-              ctx.stroke();
-            }
-          }
-        }
-        ctx.globalAlpha = 1;
+    function seed() {
+      particles = [];
+      const density = Math.min(1, (w * h) / (1600 * 900));
+      const count = Math.floor(380 * density);
+      for (let i = 0; i < count; i++) {
+        const x = Math.random() * w, y = Math.random() * h;
+        particles.push({ x, y, ox: x, oy: y, vx: (Math.random() - .5) * .18, vy: (Math.random() - .5) * .18, r: Math.random() * 1.6 + .6, a: Math.random() * .5 + .35 });
       }
-      rafRef.current = requestAnimationFrame(tick);
     }
 
     const section = canvas.parentElement!;
     const onMove = (e: MouseEvent) => {
-      const r = canvas.getBoundingClientRect();
-      mouseRef.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+      const rect = canvas.getBoundingClientRect();
+      mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top, active: true };
     };
-    const onLeave = () => { mouseRef.current = { x: -9999, y: -9999 }; };
-    const onResize = () => resize();
-
+    const onLeave = () => { mouseRef.current = { x: -9999, y: -9999, active: false }; };
     section.addEventListener("mousemove", onMove);
     section.addEventListener("mouseleave", onLeave);
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", resize);
 
-    init();
-    tick();
+    function step() {
+      ctx.clearRect(0, 0, w, h);
+      const { x: mx, y: my, active } = mouseRef.current;
+      const radius = 160, radius2 = radius * radius;
 
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.vx += (p.ox - p.x) * 0.0015;
+        p.vy += (p.oy - p.y) * 0.0015;
+
+        const dx = p.x - mx, dy = p.y - my;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < radius2 && active) {
+          const d = Math.sqrt(d2) || .001;
+          const force = 1 - d / radius;
+          p.vx += (dx / d) * force * 4.5;
+          p.vy += (dy / d) * force * 4.5;
+        }
+
+        p.vx += (Math.random() - .5) * .01;
+        p.vy += (Math.random() - .5) * .01;
+        p.vx *= 0.92; p.vy *= 0.92;
+        p.x += p.vx; p.y += p.vy;
+
+        const closeness = active ? Math.max(0, 1 - Math.sqrt(d2) / 220) : 0;
+        const alpha = Math.min(1, p.a + closeness * .6);
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(230,57,34,${alpha.toFixed(3)})`;
+        ctx.arc(p.x, p.y, p.r + closeness * 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (active) {
+        ctx.strokeStyle = "rgba(230,57,34,0.10)";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          const dx = p.x - mx, dy = p.y - my;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < 130 * 130) {
+            ctx.beginPath();
+            ctx.moveTo(mx, my); ctx.lineTo(p.x, p.y);
+            ctx.globalAlpha = (1 - Math.sqrt(d2) / 130) * .35;
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      rafRef.current = requestAnimationFrame(step);
+    }
+
+    resize(); step();
     return () => {
       cancelAnimationFrame(rafRef.current);
       section.removeEventListener("mousemove", onMove);
       section.removeEventListener("mouseleave", onLeave);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", resize);
     };
   }, []);
 
-  return (
-    <section className={styles.hero}>
-      <canvas ref={canvasRef} className={styles.canvas} />
+  const words = [0, 1, 2]; // for transition-delay staggering
 
-      <div className={styles.main}>
-        <h1 className={styles.headline}>
-          <span className={`${styles.word} ${styles.verm}`}>
-            <span>EDGE</span>
-          </span>
-          <span className={styles.word}>
-            <span>&nbsp;IS</span>
-          </span>
-          <br />
-          <span className={styles.word}>
-            <span>ENGINEERED.</span>
-          </span>
-        </h1>
+  return (
+    <header className="hero" id="hero">
+      <div className="hero-grid-bg" />
+      <canvas ref={canvasRef} id="particle-canvas" />
+
+      <div className={`hero-meta fade-in${fadesIn ? " in" : ""}`} style={{ transitionDelay: "500ms" }}>
+        <div className="meta-tag mono">
+          <span className="dot" />Live · Studio Open · MMXXVI
+        </div>
+        <div className="mono">001 / Aveos Labs · Index</div>
       </div>
 
-      <div className={styles.foot}>
-        <div className={styles.footLeft}>
-          <div className={styles.scrollLabel}>SCROLL</div>
-          <div className={styles.tag}>
-            ELITE AI LABORATORY<br />BUILDING FROM INTUITION
+      <h1 className={`hero-headline display${headlineIn ? " in" : ""}`} aria-label="The Edge is Engineered.">
+        <span className="line">
+          <span className="word" style={{ transitionDelay: "120ms" }}>The</span>
+        </span>
+        <span className="line">
+          <span className="word accent" style={{ transitionDelay: "210ms" }}>Edge</span>{" "}
+          <span className="word" style={{ transitionDelay: "300ms" }}>is</span>
+        </span>
+        <span className="line">
+          <span className="word" style={{ transitionDelay: "390ms" }}>Engineered.</span>
+        </span>
+      </h1>
+
+      <div className="hero-foot">
+        <div className={`hero-foot-left fade-in${fadesIn ? " in" : ""}`} style={{ transitionDelay: "620ms" }}>
+          <div className="scroll-cue">
+            <span className="scroll-line" /> Scroll
+          </div>
+          <div className="mono" style={{ opacity: .55 }}>
+            Elite AI Laboratory<br />Operating from anywhere
           </div>
         </div>
-        <div className={styles.footRight}>
-          <p className={styles.tagline}>
+        <div className={`hero-foot-right fade-in${fadesIn ? " in" : ""}`} style={{ transitionDelay: "740ms" }}>
+          <p className="hero-desc">
             We build AI systems, products, and MVPs that give businesses an unfair advantage.
           </p>
-          <div className={styles.actions}>
-            <a className={styles.btnOutline} href="#products">See Our Work →</a>
-            <a className={styles.btnFill} href="mailto:hello@aveoslabs.com">Book a Call →</a>
+          <div className="hero-ctas">
+            <a href="#work" className="pill-outline">See Our Work <span className="arrow">→</span></a>
+            <a href="#book" className="pill">Book a Call <span className="arrow">→</span></a>
           </div>
         </div>
       </div>
-    </section>
+    </header>
   );
 }
